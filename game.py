@@ -266,16 +266,16 @@ class Game():
                 input_pos = input_name + "+"
                 if input_pos in self.input_map.keys():
                     name = self.input_map[input_pos]
-                    if axis_pos > 0 and not self.input_states[name]:
+                    if axis_pos > 0:
                         self.handle_button_press(name)
-                    elif axis_pos <= 0 and self.input_states[name]:
+                    else:
                         self.handle_button_release(name, axis_pos < 0)  # If axis pos is < 0, that means opposite_down = true
                 input_neg = input_name + "-"
                 if input_neg in self.input_map.keys():
                     name = self.input_map[input_neg]
-                    if axis_pos < 0 and not self.input_states[name]:
+                    if axis_pos < 0:
                         self.handle_button_press(name)
-                    elif axis_pos >= 0 and not self.input_states[name]:
+                    else:
                         self.handle_button_release(name, axis_pos > 0)  # If axis pos is > 0, that means opposite_down = true
             elif event.type == pygame.JOYHATMOTION:
                 input_name = self.joystick_labels[event.joy] + "t" + str(event.hat)
@@ -283,31 +283,31 @@ class Game():
                 input_up = input_name + "U"
                 if input_up in self.input_map.keys():
                     name = self.input_map[input_up]
-                    if hat_pos[1] == 1 and not self.input_states[name]:
+                    if hat_pos[1] == 1:
                         self.handle_button_press(name)
-                    elif hat_pos[1] != 1 and self.input_states[name]:
+                    else:
                         self.handle_button_release(name, hat_pos[1] == -1)
                 input_down = input_name + "D"
                 if input_down in self.input_map.keys():
                     name = self.input_map[input_down]
-                    if hat_pos[1] == -1 and not self.input_states[name]:
+                    if hat_pos[1] == -1:
                         self.handle_button_press(name)
-                    elif hat_pos[1] != -1 and self.input_states[name]:
+                    else:
                         self.handle_button_release(name, hat_pos[1] == 1)
                 input_left = input_name + "L"
                 if input_left in self.input_map.keys():
                     name = self.input_map[input_left]
-                    if hat_pos[0] == -1 and not self.input_states[name]:
+                    if hat_pos[0] == -1:
                         self.handle_button_press(name)
-                    elif hat_pos[0] != -1 and self.input_states[name]:
+                    else:
                         self.handle_button_release(name, hat_pos[0] == 1)
                 input_right = input_name + "R"
                 if input_right in self.input_map.keys():
                     name = self.input_map[input_right]
-                    if hat_pos[0] == 1 and not self.input_states[name]:
+                    if hat_pos[0] == 1:
                         self.handle_button_press(name)
-                    elif hat_pos[0] != 1 and not self.input_states[name]:
-                        self.handle_button_relase(name, hat_pos[0] == -1)
+                    else:
+                        self.handle_button_release(name, hat_pos[0] == -1)
 
     def handle_button_press(self, name):
         if name.endswith(" Pos"):
