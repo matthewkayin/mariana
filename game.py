@@ -183,7 +183,7 @@ class Game():
         self.input_count = 0
         self.input_count += self.joysticks[self.current_joystick].get_numbuttons()
         self.input_count += self.joysticks[self.current_joystick].get_numaxes() * 3  # Times three, one for the axis and two for the axis as pos and neg buttons
-        self.input_count += self.joysticks[self.current_joystick].get_numhats() * 2  # Times two because hats have two directional values on them in pygame
+        self.input_count += self.joysticks[self.current_joystick].get_numhats() * 4  # Times two because hats are basically four buttons
         final_y = 200 + (self.input_count * 60)
         if final_y > self.SCREEN_HEIGHT:
             self.scroll_max = final_y - self.SCREEN_HEIGHT
@@ -255,9 +255,59 @@ class Game():
                         opposite_down = (pygame.key.get_pressed())[opposite_key]
                     self.handle_button_release(name, opposite_down)
             elif event.type == pygame.JOYAXISMOTION:
-                input_name = self.joystick_labels[event.joy] + "x" + event.axis
-                # TODO use the handle button press with the joystick values to also simulate a press of Ax#+ and Ax#-
-                # while also updating the value of the axis input
+                input_name = self.joystick_labels[event.joy] + "x" + str(event.axis)
+                axis_pos = self.joysticks[event.joy].get_axis(event.axis)
+                if axis_pos < self.AXIS_THRESHOLD:
+                    axis_pos = 0
+                if input_name in self.input_map.keys():
+                    name = self.input_map[input_name]
+                    self.input_queue.append("AxisMoved:" + input_name)
+                    self.input_states[name] = axis_pos
+                input_pos = input_name + "+"
+                if input_pos in self.input_map.keys():
+                    name = self.input_map[input_pos]
+                    if axis_pos > 0 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif axis_pos <= 0 and self.input_states[name]:
+                        self.handle_button_release(name, axis_pos < 0)  # If axis pos is < 0, that means opposite_down = true
+                input_neg = input_name + "-"
+                if input_neg in self.input_map.keys():
+                    name = self.input_map[input_neg]
+                    if axis_pos < 0 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif axis_pos >= 0 and not self.input_states[name]:
+                        self.handle_button_release(name, axis_pos > 0)  # If axis pos is > 0, that means opposite_down = true
+            elif event.type == pygame.JOYHATMOTION:
+                input_name = self.joystick_labels[event.joy] + "t" + str(event.hat)
+                hat_pos = self.joysticks[event.joy].get_hat(event.hat)
+                input_up = input_name + "U"
+                if input_up in self.input_map.keys():
+                    name = self.input_map[input_up]
+                    if hat_pos[1] == 1 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif hat_pos[1] != 1 and self.input_states[name]:
+                        self.handle_button_release(name, hat_pos[1] == -1)
+                input_down = input_name + "D"
+                if input_down in self.input_map.keys():
+                    name = self.input_map[input_down]
+                    if hat_pos[1] == -1 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif hat_pos[1] != -1 and self.input_states[name]:
+                        self.handle_button_release(name, hat_pos[1] == 1)
+                input_left = input_name + "L"
+                if input_left in self.input_map.keys():
+                    name = self.input_map[input_left]
+                    if hat_pos[0] == -1 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif hat_pos[0] != -1 and self.input_states[name]:
+                        self.handle_button_release(name, hat_pos[0] == 1)
+                input_right = input_name + "R"
+                if input_right in self.input_map.keys():
+                    name = self.input_map[input_right]
+                    if hat_pos[0] == 1 and not self.input_states[name]:
+                        self.handle_button_press(name)
+                    elif hat_pos[0] != 1 and not self.input_states[name]:
+                        self.handle_button_relase(name, hat_pos[0] == -1)
 
     def handle_button_press(self, name):
         if name.endswith(" Pos"):
@@ -392,7 +442,8 @@ class Game():
         """
         Update game logic
         """
-        print(self.input_states)
+        if self.gamestate == 0:
+            print(self.input_states)
 
     def get_curr_input_name(self):
         name = self.joystick_labels[self.current_joystick]
@@ -400,17 +451,27 @@ class Game():
             name += str(self.current_joyinput)
         elif self.current_joyinput < self.joysticks[self.current_joystick].get_numbuttons() + (self.joysticks[self.current_joystick].get_numaxes() * 3):
             axis_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons()
-            name += "x" + str(axis_number)
+            name += "x" + str(axis_number - (axis_number % 3))
             if axis_number % 3 == 1:
                 name += "+"
             elif axis_number % 3 == 2:
                 name += "-"
         elif self.current_joyinput < self.input_count:
-            name += "t" + str(self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons() - self.joysticks[self.current_joystick].get_numaxes())
+            hat_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons() - (self.joysticks[self.current_joystick].get_numaxes() * 3)
+            name += "t" + str(hat_number - (hat_number % 4))
+            if hat_number % 4 == 0:
+                name += "U"
+            elif hat_number % 4 == 1:
+                name += "D"
+            elif hat_number % 4 == 2:
+                name += "L"
+            elif hat_number % 4 == 3:
+                name += "R"
         return name
 
     def map_input(self, game_input):
         name = self.get_curr_input_name()
+        print(name)
         if game_input is None:
             if name in self.input_map:
                 del self.input_map[name]
@@ -422,6 +483,7 @@ class Game():
 
     def save_joyconfig(self):
         map_file = open("keyconfig.txt", "w")
+        print(self.input_map)
         for i in range(0, len(self.input_names)):
             name = self.input_names[i]
             if name in self.input_map.values():
@@ -516,18 +578,26 @@ class Game():
                 elif j == 2:
                     pygame.draw.rect(self.screen, self.WHITE, ((self.SCREEN_WIDTH / 2) + self.offsetx + 20, draw_y, 60, self.item_height), not self.joysticks[self.current_joystick].get_axis(i) < -self.AXIS_THRESHOLD)
 
-        hat_keys = "AB"
+        hat_directions = ["UP", "DOWN", "LEFT", "RIGHT"]
         for i in range(0, self.joysticks[self.current_joystick].get_numhats()):
-            for j in range(0, 2):
-                draw_y = self.base_y + (self.inc_y * ((i * 2) + j + self.joysticks[self.current_joystick].get_numbuttons() + self.joysticks[self.current_joystick].get_numaxes())) - self.scroll_offset
+            for j in range(0, 4):
+                draw_y = self.base_y + (self.inc_y * ((i * 4) + j + self.joysticks[self.current_joystick].get_numbuttons() + (self.joysticks[self.current_joystick].get_numaxes() * 3))) - self.scroll_offset
                 # If the item is out of view after scrolling, don't draw it
                 if draw_y >= self.SCREEN_HEIGHT or draw_y + self.item_height <= self.base_y:
                     continue
-                color_mod = not (self.current_joyinput == i + j + self.joysticks[self.current_joystick].get_numbuttons() + self.joysticks[self.current_joystick].get_numaxes())
+                color_mod = not (self.current_joyinput == (i * 4) + j + self.joysticks[self.current_joystick].get_numbuttons() + (self.joysticks[self.current_joystick].get_numaxes() * 3))
                 pygame.draw.rect(self.screen, self.WHITE, (self.item_x, draw_y, self.item_width, self.item_height), color_mod)
-                self.render_text("HAT " + str(i) + "-" + hat_keys[j], (self.item_x + 20, draw_y + 5), 22, (255 * color_mod, 255 * color_mod, 255 * color_mod))
-                pygame.draw.rect(self.screen, self.WHITE, ((self.SCREEN_WIDTH / 2) + self.offsetx + 20, draw_y, 60, self.item_height), True)
-                self.render_text(str(self.joysticks[self.current_joystick].get_hat(i)[j]), ((self.SCREEN_WIDTH / 2) + self.offsetx + 25, draw_y + 5), 22)
+                self.render_text("HAT " + str(i) + " " + hat_directions[j], (self.item_x + 20, draw_y + 5), 22, (255 * color_mod, 255 * color_mod, 255 * color_mod))
+                hat_down = False
+                if j == 0:
+                    hat_down = (self.joysticks[self.current_joystick].get_hat(i))[1] == 1  # Returns true if hat up is being pressed
+                elif j == 1:
+                    hat_down = (self.joysticks[self.current_joystick].get_hat(i))[1] == -1  # Returns true if hat down is being pressed
+                elif j == 2:
+                    hat_down = (self.joysticks[self.current_joystick].get_hat(i))[0] == -1  # Returns true if hat left is being pressed
+                elif j == 3:
+                    hat_down = (self.joysticks[self.current_joystick].get_hat(i))[0] == 1  # Returns true if hat right is being pressed
+                pygame.draw.rect(self.screen, self.WHITE, ((self.SCREEN_WIDTH / 2) + self.offsetx + 20, draw_y, 60, self.item_height), not hat_down)
 
         # Now let's render the list of game inputs
         name = self.get_curr_input_name()
