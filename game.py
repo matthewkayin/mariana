@@ -8,6 +8,10 @@ import pygame
 
 
 class Game():
+    """
+    ENGINE INIT AND CORE GAME LOOP
+    """
+
     def __init__(self):
         """
         Default constructor for Game class, handles pygame init and starts
@@ -75,6 +79,127 @@ class Game():
         self.show_fps = self.debug
         self.fps = 0
 
+    def input(self):
+        """
+        Handle input from the player, usually redirects to other functions for cleanliness
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                self.running = False
+                break
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
+                self.start_joyconfig()
+                break
+            elif self.gamestate == -1:
+                self.input_joyconfig(event)
+            else:
+                self.handle_event(event)
+
+    def update(self, delta):
+        """
+        Update game logic
+        """
+        if self.gamestate == 0:
+            x = 5  # This line is only here because the update function is empty at the moment
+
+    def render(self):
+        """
+        Draw to the game screen here
+        """
+        pygame.draw.rect(self.screen, self.BLACK, (0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), False)
+
+        if self.gamestate == -1:
+            self.render_joyconfig()
+
+        if self.show_fps:
+            self.render_text("FPS: " + str(self.fps), (0, 0), 14, self.GREEN)
+            self.render_text("Joysticks: " + str(self.joystick_count), (0, 20), 14, self.GREEN)
+
+        pygame.display.flip()
+
+    def run(self):
+        """
+        Sets up all the timing variables and calls the main game loop
+        """
+        SECOND = 1000
+        UPDATE_TIME = SECOND / 60
+
+        before_time = pygame.time.get_ticks()
+        before_sec = before_time
+        frames = 0
+        delta = 0
+
+        while self.running:
+            self.clock.tick(self.TARGET_FPS)
+
+            self.input()
+            self.update(delta)
+            self.render()
+            frames += 1
+
+            after_time = pygame.time.get_ticks()
+            delta = (after_time - before_time) / UPDATE_TIME
+            if after_time - before_sec >= SECOND:
+                self.fps = frames
+                frames = 0
+                before_sec += SECOND
+            before_time = pygame.time.get_ticks()
+
+    def quit(self):
+        """
+        It quits the game
+        """
+        pygame.quit()
+
+    """
+    FONT AND RENDERING
+    """
+
+    def init_fonts(self):
+        """
+        Init fonts and renderable text objects
+        Kind of a smol function because we're using an object cache now
+        """
+
+        # This cache idea was really clever I had no idea python had these collections
+        # I mean keyed arrays as a language feature? That's stupid useful 10/10 well done
+        self.font_cache = {}
+        self.text_cache = {}
+
+    def render_text(self, text, pos, size=14, color=(255, 255, 255)):
+        """
+        Renders a text to the screen
+        This function abuses the dynamic typing of python so that x and y can be position values
+        or they can be "CENTERED" (i.e. not an integer), that way I can center an image without
+        having to do the math on each render text call
+        """
+
+        # If the font / text object for the passed string isn't in the cache, add it to the cache
+        if size not in self.font_cache:
+            self.font_cache[size] = pygame.font.SysFont("Serif", size)
+        # This variable prevents us from using an object of the same message but a different size/color than requested
+        text_id = text + "&sz=" + str(size) + "&colo=" + str(color)
+        if text_id not in self.text_cache:
+            self.text_cache[text_id] = self.font_cache[size].render(text, False, color)
+
+        draw_x = 0
+        draw_y = 0
+
+        if pos[0] == "CENTERED":
+            draw_x = (self.SCREEN_WIDTH / 2) - (self.text_cache[text_id].get_rect().w / 2)
+        else:
+            draw_x = pos[0]
+        if pos[1] == "CENTERED":
+            draw_y = (self.SCREEN_HEIGHT / 2) - (self.text_cache[text_id].get_rect().h / 2)
+        else:
+            draw_y = pos[1]
+
+        self.screen.blit(self.text_cache[text_id], (draw_x, draw_y))
+
+    """
+    GENERAL INPUT HANDLING
+    """
+
     def init_input(self):
         """
         Initializes input variables and joysticks
@@ -131,86 +256,6 @@ class Game():
         # Attempt to load inputs from file
         self.load_joyconfig()
 
-    def init_fonts(self):
-        """
-        Init fonts and renderable text objects
-        Kind of a smol function because we're using an object cache now
-        """
-
-        # This cache idea was really clever I had no idea python had these collections
-        # I mean keyed arrays as a language feature? That's stupid useful 10/10 well done
-        self.font_cache = {}
-        self.text_cache = {}
-
-    def start_joyconfig(self):
-        self.gamestate = -1
-
-        self.current_joystick = 0
-
-        self.set_joyconfig_scroll()
-
-        # Define UI positioning variables
-        # We do this here so we can use the same vars in the input function and so that we can avoid calculating them each frame
-        self.joy_button_width = 50
-        self.joy_button_x = (self.SCREEN_WIDTH / 2) - ((self.joystick_count * self.joy_button_width) / 2)
-        self.joy_button_y = 90
-        self.text_y = self.joy_button_y + (self.joy_button_width / 4)
-
-        self.base_y = 200
-        self.inc_y = 60
-        self.item_width = 200
-        self.item_height = 40
-        self.offsetx = -100
-        self.item_x = (self.SCREEN_WIDTH / 2) - self.item_width + self.offsetx
-        self.input_x = self.item_x + self.item_width + 150
-        self.input_width = 300
-
-        self.exit_button_x = self.SCREEN_WIDTH - 60
-        self.exit_button_y = 10
-        self.exit_button_w = 60
-        self.exit_button_h = 22
-
-    def set_joyconfig_scroll(self):
-        # If there's no controllers, don't run this code
-        if self.joystick_count == 0:
-            return
-
-        self.current_joyinput = 0
-
-        # Set the max scroll offset based on the last element in the list of inputs
-        self.scroll_offset = 0
-        self.scroll_max = 0
-        self.input_count = 0
-        self.input_count += self.joysticks[self.current_joystick].get_numbuttons()
-        self.input_count += self.joysticks[self.current_joystick].get_numaxes() * 3  # Times three, one for the axis and two for the axis as pos and neg buttons
-        self.input_count += self.joysticks[self.current_joystick].get_numhats() * 4  # Times two because hats are basically four buttons
-        final_y = 200 + (self.input_count * 60)
-        if final_y > self.SCREEN_HEIGHT:
-            self.scroll_max = final_y - self.SCREEN_HEIGHT
-
-        # Set the max scroll offset based on the number of game inputs
-        self.game_scroll_offset = 0
-        self.game_scroll_max = 0
-        final_y = 200 + (len(self.input_names) * 60)
-        if final_y > self.SCREEN_HEIGHT:
-            self.game_scroll_max = final_y - self.SCREEN_HEIGHT
-
-    def input(self):
-        """
-        Handle input from the player, usually redirects to other functions for cleanliness
-        """
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                self.running = False
-                break
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_F2:
-                self.start_joyconfig()
-                break
-            elif self.gamestate == -1:
-                self.input_joyconfig(event)
-            else:
-                self.handle_event(event)
-
     def handle_event(self, event):
         """
         This function handles key input when the input is for an actual game key / joystick press
@@ -257,7 +302,7 @@ class Game():
             elif event.type == pygame.JOYAXISMOTION:
                 input_name = self.joystick_labels[event.joy] + "x" + str(event.axis)
                 axis_pos = self.joysticks[event.joy].get_axis(event.axis)
-                if axis_pos < self.AXIS_THRESHOLD:
+                if abs(axis_pos) < self.AXIS_THRESHOLD:
                     axis_pos = 0
                 if input_name in self.input_map.keys():
                     name = self.input_map[input_name]
@@ -310,6 +355,10 @@ class Game():
                         self.handle_button_release(name, hat_pos[0] == -1)
 
     def handle_button_press(self, name):
+        """
+        Triggers the change in input states for a button being pressed
+        The button press will only be triggered once
+        """
         if name.endswith(" Pos"):
             name_as_axis = "Axis " + name[:name.index(" Pos")]
             if self.input_states[name_as_axis] != 1:
@@ -326,6 +375,10 @@ class Game():
                 self.input_states[name] = True
 
     def handle_button_release(self, name, opposite_down):
+        """
+        Triggers the change in input states for a button being released
+        The trigger will only be called once per release
+        """
         if name.endswith(" Pos"):
             name_as_axis = "Axis " + name[:name.index(" Pos")]
             if self.input_states[name_as_axis] == 1:
@@ -337,7 +390,7 @@ class Game():
                     self.input_states[name_as_axis] = 0
         elif name.endswith(" Neg"):
             name_as_axis = "Axis " + name[:name.index(" Neg")]
-            if self.input_states[name_as_axis] != -1:
+            if self.input_states[name_as_axis] == -1:
                 self.input_queue.append("AxisMoved:" + name_as_axis)
                 # If the opposite key is being held, axis state is -1, else it's 0
                 if opposite_down:
@@ -349,176 +402,68 @@ class Game():
                 self.input_queue.append("ButtonUp:" + name)
                 self.input_states[name] = False
 
-    def input_joyconfig(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == pygame.BUTTON_WHEELUP:
-                # Get mouse coords
-                coords = pygame.mouse.get_pos()
-                mousex = coords[0]
-                mousey = coords[1]
+    """
+    JOYCONFIG
+    """
 
-                # If the player is within the bounds of the input scroll field, scroll up
-                if mousex >= self.item_x and mousex <= self.item_x + 300 and mousey >= self.base_y:
-                    self.scroll_offset -= 15
-                    if self.scroll_offset < 0:
-                        self.scroll_offset = 0
-                elif mousex >= self.input_x and mousex <= self.input_x + 300 and mousey >= self.base_y:
-                    self.game_scroll_offset -= 15
-                    if self.game_scroll_offset < 0:
-                        self.game_scroll_offset = 0
-            elif event.button == pygame.BUTTON_WHEELDOWN:
-                # Get mouse coords
-                coords = pygame.mouse.get_pos()
-                mousex = coords[0]
-                mousey = coords[1]
-
-                # If the player is within the bounds of the input scroll field, scroll down
-                if mousex >= self.item_x and mousex <= self.item_x + 300 and mousey >= self.base_y:
-                    self.scroll_offset += 15
-                    if self.scroll_offset > self.scroll_max:
-                        self.scroll_offset = self.scroll_max
-                elif mousex >= self.input_x and mousex <= self.input_x + 300 and mousey >= self.base_y:
-                    self.game_scroll_offset += 15
-                    if self.game_scroll_offset > self.game_scroll_max:
-                        self.game_scroll_offset = self.game_scroll_max
-            elif event.button == pygame.BUTTON_LEFT:
-                # Get mouse coords
-                coords = pygame.mouse.get_pos()
-                mousex = coords[0]
-                mousey = coords[1]
-
-                click_handled = False
-
-                # Check to see if user clicked on the exit button
-                if mousex >= self.exit_button_x and mousex <= self.exit_button_x + self.exit_button_w and mousey >= self.exit_button_y and mousey <= self.exit_button_y + self.exit_button_h:
-                    self.save_joyconfig()
-                    self.gamestate = 0
-                    click_handled = True
-
-                # Check to see if the user clicked on one of the controller tabs
-                for i in range(0, self.joystick_count):
-                    if click_handled:
-                        break
-                    button_rect = (self.joy_button_x + (self.joy_button_width * i), self.joy_button_y, self.joy_button_width, self.joy_button_width)
-                    if mousex >= button_rect[0] and mousex < button_rect[0] + button_rect[2] and mousey >= button_rect[1] and mousey < button_rect[1] + button_rect[3]:
-                        if i != self.current_joystick:
-                            self.current_joystick = i
-                            self.set_joyconfig_scroll()
-                        click_handled = True
-
-                # If we already handled the click, stop processing this event
-                if click_handled:
-                    return
-
-                # Check to see if user clicked on one of the joystick inputs
-                if mousex >= self.item_x and mousex <= self.item_x + 300:
-                    for i in range(0, self.input_count):
-                        if click_handled:
-                            break
-                        item_y = self.base_y + (self.inc_y * i) - self.scroll_offset
-                        if item_y >= self.SCREEN_HEIGHT or item_y + self.item_height <= self.base_y:
-                            continue
-                        elif mousey >= item_y and mousey <= item_y + self.item_height:
-                            self.current_joyinput = i
-                            click_handled = True
-
-                # Check to see if user clicked on one of the game inputs
-                if mousex >= self.input_x and mousex <= self.input_x + 300:
-                    for i in range(0, len(self.input_names)):
-                        if click_handled:
-                            break
-                        input_y = self.base_y + (self.inc_y * i) - self.game_scroll_offset
-                        if input_y >= self.SCREEN_HEIGHT or input_y + self.item_height <= self.base_y:
-                            continue
-                        elif mousey >= input_y and mousey <= input_y + self.item_height:
-                            self.map_input(self.input_names[i])
-                            click_handled = True
-
-                # If there was a left click but no button click was handled, reset input selection
-                if not click_handled:
-                    self.map_input(None)
-
-    def update(self, delta):
+    def start_joyconfig(self):
         """
-        Update game logic
+        Initialize the joyconfig menu
         """
-        if self.gamestate == 0:
-            print(self.input_states)
+        self.gamestate = -1
 
-    def get_curr_input_name(self):
-        name = self.joystick_labels[self.current_joystick]
-        if self.current_joyinput < self.joysticks[self.current_joystick].get_numbuttons():
-            name += str(self.current_joyinput)
-        elif self.current_joyinput < self.joysticks[self.current_joystick].get_numbuttons() + (self.joysticks[self.current_joystick].get_numaxes() * 3):
-            axis_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons()
-            name += "x" + str(axis_number - (axis_number % 3))
-            if axis_number % 3 == 1:
-                name += "+"
-            elif axis_number % 3 == 2:
-                name += "-"
-        elif self.current_joyinput < self.input_count:
-            hat_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons() - (self.joysticks[self.current_joystick].get_numaxes() * 3)
-            name += "t" + str(hat_number - (hat_number % 4))
-            if hat_number % 4 == 0:
-                name += "U"
-            elif hat_number % 4 == 1:
-                name += "D"
-            elif hat_number % 4 == 2:
-                name += "L"
-            elif hat_number % 4 == 3:
-                name += "R"
-        return name
+        self.current_joystick = 0
 
-    def map_input(self, game_input):
-        name = self.get_curr_input_name()
-        print(name)
-        if game_input is None:
-            if name in self.input_map:
-                del self.input_map[name]
-        else:
-            # If you try to map a button to an axis, or an axis to a button, don't perform the mapping
-            if ("x" in name and not game_input.startswith("Axis ")) or ("x" not in name and game_input.startswith("Axis ")):
-                return
-            self.input_map[name] = game_input
+        self.set_joyconfig_scroll()
 
-    def save_joyconfig(self):
-        map_file = open("keyconfig.txt", "w")
-        print(self.input_map)
-        for i in range(0, len(self.input_names)):
-            name = self.input_names[i]
-            if name in self.input_map.values():
-                mapping = list(self.input_map.keys())[list(self.input_map.values()).index(name)]
-                map_file.write(name + "=" + mapping + "\n")
-        map_file.close()
+        # Define UI positioning variables
+        # We do this here so we can use the same vars in the input function and so that we can avoid calculating them each frame
+        self.joy_button_width = 50
+        self.joy_button_x = (self.SCREEN_WIDTH / 2) - ((self.joystick_count * self.joy_button_width) / 2)
+        self.joy_button_y = 90
+        self.text_y = self.joy_button_y + (self.joy_button_width / 4)
 
-    def load_joyconfig(self):
-        if not os.path.isfile("keyconfig.txt"):
+        self.base_y = 200
+        self.inc_y = 60
+        self.item_width = 200
+        self.item_height = 40
+        self.offsetx = -100
+        self.item_x = (self.SCREEN_WIDTH / 2) - self.item_width + self.offsetx
+        self.input_x = self.item_x + self.item_width + 150
+        self.input_width = 300
+
+        self.exit_button_x = self.SCREEN_WIDTH - 60
+        self.exit_button_y = 10
+        self.exit_button_w = 60
+        self.exit_button_h = 22
+
+    def set_joyconfig_scroll(self):
+        """
+        Init the joyconfig scrolling variables based on the currently selected controller
+        """
+        # If there's no controllers, don't run this code
+        if self.joystick_count == 0:
             return
-        map_file = open("keyconfig.txt", "r")
-        for line in map_file.read().splitlines():
-            if "=" not in line:
-                continue
-            index = line.index("=")
-            name = line[:index]
-            mapping = line[(index + 1):]
-            self.input_map[mapping] = name
-        map_file.close()
-        print(self.input_map)
 
-    def render(self):
-        """
-        Draw to the game screen here
-        """
-        pygame.draw.rect(self.screen, self.BLACK, (0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), False)
+        self.current_joyinput = 0
 
-        if self.gamestate == -1:
-            self.render_joyconfig()
+        # Set the max scroll offset based on the last element in the list of inputs
+        self.scroll_offset = 0
+        self.scroll_max = 0
+        self.input_count = 0
+        self.input_count += self.joysticks[self.current_joystick].get_numbuttons()
+        self.input_count += self.joysticks[self.current_joystick].get_numaxes() * 3  # Times three, one for the axis and two for the axis as pos and neg buttons
+        self.input_count += self.joysticks[self.current_joystick].get_numhats() * 4  # Times two because hats are basically four buttons
+        final_y = 200 + (self.input_count * 60)
+        if final_y > self.SCREEN_HEIGHT:
+            self.scroll_max = final_y - self.SCREEN_HEIGHT
 
-        if self.show_fps:
-            self.render_text("FPS: " + str(self.fps), (0, 0), 14, self.GREEN)
-            self.render_text("Joysticks: " + str(self.joystick_count), (0, 20), 14, self.GREEN)
-
-        pygame.display.flip()
+        # Set the max scroll offset based on the number of game inputs
+        self.game_scroll_offset = 0
+        self.game_scroll_max = 0
+        final_y = 200 + (len(self.input_names) * 60)
+        if final_y > self.SCREEN_HEIGHT:
+            self.game_scroll_max = final_y - self.SCREEN_HEIGHT
 
     def render_joyconfig(self):
         """
@@ -620,69 +565,182 @@ class Game():
         self.render_text("Controller Inputs", (self.item_x + 40, self.base_y - 50), 22)
         self.render_text("Game Inputs", (self.input_x + 70, self.base_y - 50), 22)
 
-    def render_text(self, text, pos, size=14, color=(255, 255, 255)):
+    def input_joyconfig(self, event):
         """
-        Renders a text to the screen
-        This function abuses the dynamic typing of python so that x and y can be position values
-        or they can be "CENTERED" (i.e. not an integer), that way I can center an image without
-        having to do the math on each render text call
+        Essentially a branch of the input() function. Handles input specifically for when users are in the joyconfig screen
         """
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == pygame.BUTTON_WHEELUP:
+                # Get mouse coords
+                coords = pygame.mouse.get_pos()
+                mousex = coords[0]
+                mousey = coords[1]
 
-        # If the font / text object for the passed string isn't in the cache, add it to the cache
-        if size not in self.font_cache:
-            self.font_cache[size] = pygame.font.SysFont("Serif", size)
-        # This variable prevents us from using an object of the same message but a different size/color than requested
-        text_id = text + "&sz=" + str(size) + "&colo=" + str(color)
-        if text_id not in self.text_cache:
-            self.text_cache[text_id] = self.font_cache[size].render(text, False, color)
+                # If the player is within the bounds of the input scroll field, scroll up
+                if mousex >= self.item_x and mousex <= self.item_x + 300 and mousey >= self.base_y:
+                    self.scroll_offset -= 15
+                    if self.scroll_offset < 0:
+                        self.scroll_offset = 0
+                elif mousex >= self.input_x and mousex <= self.input_x + 300 and mousey >= self.base_y:
+                    self.game_scroll_offset -= 15
+                    if self.game_scroll_offset < 0:
+                        self.game_scroll_offset = 0
+            elif event.button == pygame.BUTTON_WHEELDOWN:
+                # Get mouse coords
+                coords = pygame.mouse.get_pos()
+                mousex = coords[0]
+                mousey = coords[1]
 
-        draw_x = 0
-        draw_y = 0
+                # If the player is within the bounds of the input scroll field, scroll down
+                if mousex >= self.item_x and mousex <= self.item_x + 300 and mousey >= self.base_y:
+                    self.scroll_offset += 15
+                    if self.scroll_offset > self.scroll_max:
+                        self.scroll_offset = self.scroll_max
+                elif mousex >= self.input_x and mousex <= self.input_x + 300 and mousey >= self.base_y:
+                    self.game_scroll_offset += 15
+                    if self.game_scroll_offset > self.game_scroll_max:
+                        self.game_scroll_offset = self.game_scroll_max
+            elif event.button == pygame.BUTTON_LEFT:
+                # Get mouse coords
+                coords = pygame.mouse.get_pos()
+                mousex = coords[0]
+                mousey = coords[1]
 
-        if pos[0] == "CENTERED":
-            draw_x = (self.SCREEN_WIDTH / 2) - (self.text_cache[text_id].get_rect().w / 2)
+                click_handled = False
+
+                # Check to see if user clicked on the exit button
+                if mousex >= self.exit_button_x and mousex <= self.exit_button_x + self.exit_button_w and mousey >= self.exit_button_y and mousey <= self.exit_button_y + self.exit_button_h:
+                    self.save_joyconfig()
+                    self.gamestate = 0
+                    click_handled = True
+
+                # Check to see if the user clicked on one of the controller tabs
+                for i in range(0, self.joystick_count):
+                    if click_handled:
+                        break
+                    button_rect = (self.joy_button_x + (self.joy_button_width * i), self.joy_button_y, self.joy_button_width, self.joy_button_width)
+                    if mousex >= button_rect[0] and mousex < button_rect[0] + button_rect[2] and mousey >= button_rect[1] and mousey < button_rect[1] + button_rect[3]:
+                        if i != self.current_joystick:
+                            self.current_joystick = i
+                            self.set_joyconfig_scroll()
+                        click_handled = True
+
+                # If we already handled the click, stop processing this event
+                if click_handled:
+                    return
+
+                # Check to see if user clicked on one of the joystick inputs
+                if mousex >= self.item_x and mousex <= self.item_x + 300:
+                    for i in range(0, self.input_count):
+                        if click_handled:
+                            break
+                        item_y = self.base_y + (self.inc_y * i) - self.scroll_offset
+                        if item_y >= self.SCREEN_HEIGHT or item_y + self.item_height <= self.base_y:
+                            continue
+                        elif mousey >= item_y and mousey <= item_y + self.item_height:
+                            self.current_joyinput = i
+                            click_handled = True
+
+                # Check to see if user clicked on one of the game inputs
+                if mousex >= self.input_x and mousex <= self.input_x + 300:
+                    for i in range(0, len(self.input_names)):
+                        if click_handled:
+                            break
+                        input_y = self.base_y + (self.inc_y * i) - self.game_scroll_offset
+                        if input_y >= self.SCREEN_HEIGHT or input_y + self.item_height <= self.base_y:
+                            continue
+                        elif mousey >= input_y and mousey <= input_y + self.item_height:
+                            self.map_input(self.input_names[i])
+                            click_handled = True
+
+                # If there was a left click but no button click was handled, reset input selection
+                if not click_handled:
+                    self.map_input(None)
+
+    def save_joyconfig(self):
+        """
+        Saves the controller configuration to a file
+        """
+        map_file = open("keyconfig.txt", "w")
+        for i in range(0, len(self.input_names)):
+            name = self.input_names[i]
+            if name in self.input_map.values():
+                mapping = list(self.input_map.keys())[list(self.input_map.values()).index(name)]
+                map_file.write(name + "=" + mapping + "\n")
+        map_file.close()
+
+    def load_joyconfig(self):
+        """
+        Loads the controller configuration from a file
+        """
+        if not os.path.isfile("keyconfig.txt"):
+            return
+        map_file = open("keyconfig.txt", "r")
+        for line in map_file.read().splitlines():
+            if "=" not in line:
+                continue
+            index = line.index("=")
+            name = line[:index]
+            mapping = line[(index + 1):]
+            self.input_map[mapping] = name
+        map_file.close()
+
+    def get_curr_input_name(self):
+        """
+        Returns the specific name of the currently selected input
+        Each input has a unique identifier.
+        """
+        name = self.joystick_labels[self.current_joystick]
+        if self.current_joyinput < self.joysticks[self.current_joystick].get_numbuttons():
+            name += str(self.current_joyinput)
+        elif self.current_joyinput < self.joysticks[self.current_joystick].get_numbuttons() + (self.joysticks[self.current_joystick].get_numaxes() * 3):
+            axis_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons()
+            name += "x" + str(axis_number // 3)
+            if axis_number % 3 == 1:
+                name += "+"
+            elif axis_number % 3 == 2:
+                name += "-"
+        elif self.current_joyinput < self.input_count:
+            hat_number = self.current_joyinput - self.joysticks[self.current_joystick].get_numbuttons() - (self.joysticks[self.current_joystick].get_numaxes() * 3)
+            name += "t" + str(hat_number // 4)
+            if hat_number % 4 == 0:
+                name += "U"
+            elif hat_number % 4 == 1:
+                name += "D"
+            elif hat_number % 4 == 2:
+                name += "L"
+            elif hat_number % 4 == 3:
+                name += "R"
+        return name
+
+    def input_is_axis(self, input_name):
+        """
+        Each controller input has a specific code. This returns true if that specific input code is one that belongs to an axis.
+        Axes are designated by Ax# where # is a number such as 0, 1, etc. that is assigned to the controller by pygame and the OS
+        Examples: A0, B2 are buttons, this would return False. Ax0 and Bx3 are Axes, this would return true. Ax0+ is an axis being
+        used as a button, so we would return False in that case
+        """
+        return "x" in input_name and "+" not in input_name and "-" not in input_name
+
+    def map_input(self, game_input):
+        """
+        Maps an input to the currently selected button or axis
+        """
+        name = self.get_curr_input_name()
+        if game_input is None:
+            if name in self.input_map:
+                del self.input_map[name]
         else:
-            draw_x = pos[0]
-        if pos[1] == "CENTERED":
-            draw_y = (self.SCREEN_HEIGHT / 2) - (self.text_cache[text_id].get_rect().h / 2)
-        else:
-            draw_y = pos[1]
-
-        self.screen.blit(self.text_cache[text_id], (draw_x, draw_y))
-
-    def run(self):
-        """
-        Sets up all the timing variables and calls the main game loop
-        """
-        SECOND = 1000
-        UPDATE_TIME = SECOND / 60
-
-        before_time = pygame.time.get_ticks()
-        before_sec = before_time
-        frames = 0
-        delta = 0
-
-        while self.running:
-            self.clock.tick(self.TARGET_FPS)
-
-            self.input()
-            self.update(delta)
-            self.render()
-            frames += 1
-
-            after_time = pygame.time.get_ticks()
-            delta = (after_time - before_time) / UPDATE_TIME
-            if after_time - before_sec >= SECOND:
-                self.fps = frames
-                frames = 0
-                before_sec += SECOND
-            before_time = pygame.time.get_ticks()
-
-    def quit(self):
-        """
-        It quits the game
-        """
-        pygame.quit()
+            # If you try to map a button to an axis, or an axis to a button, don't perform the mapping
+            if (self.input_is_axis(name) and not game_input.startswith("Axis ")) or (not self.input_is_axis(name) and game_input.startswith("Axis ")):
+                return
+            # If there is an rule to map a different controller input to this game input, remove that rule
+            # In other words, make sure there's only one input per game function
+            if game_input in self.input_map.values():
+                index = list(self.input_map.values()).index(game_input)
+                key = list(self.input_map.keys())[index]
+                del self.input_map[key]
+            self.input_map[name] = game_input
 
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'  # centers the pygame window
