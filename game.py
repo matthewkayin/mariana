@@ -39,6 +39,7 @@ class Game():
         # init all sys args to their default values
         self.debug = False
         self.use_joystick = False
+        self.enable_cache_timeout = False
 
         # loop through sys args and set values as needed
         for argument in sys.argv:
@@ -46,6 +47,8 @@ class Game():
                 self.debug = True
             if argument == "--joystick-enable":
                 self.use_joystick = True
+            if argument == "--cache-timeout":
+                self.enable_cache_timeout = True
 
     def init_engine(self):
         """
@@ -99,8 +102,8 @@ class Game():
         """
         Update game logic
         """
-        if self.gamestate == 0:
-            x = 5  # This line is only here because the update function is empty at the moment
+
+        self.tick_cache_timeout()
 
     def render(self):
         """
@@ -153,6 +156,7 @@ class Game():
 
     """
     FONT AND RENDERING
+    # TODO add a bit that clears cache items after a certain amount of unuse such as 5 minutes
     """
 
     def init_fonts(self):
@@ -165,6 +169,41 @@ class Game():
         # I mean keyed arrays as a language feature? That's stupid useful 10/10 well done
         self.font_cache = {}
         self.text_cache = {}
+
+        # Timeouts for caches so we don't hold on to variables we won't use
+        self.CACHE_TIMEOUT = 3 * 60 * 60
+        self.font_timeout = {}
+        self.text_timeout = {}
+
+    def tick_cache_timeout(self):
+        """
+        This function updates cache timing variables and deletes them if they haven't been used in too long
+        Does not run if enable cache timeout is not set to true
+        """
+
+        if not self.enable_cache_timeout:
+            return
+
+        fonts_to_delete = []
+        texts_to_delete = []
+
+        # Update the timing variables
+        for key in self.font_timeout:
+            self.font_timeout[key] += 1
+            if self.font_timeout[key] > self.CACHE_TIMEOUT:
+                fonts_to_delete.append(key)
+        for key in self.text_timeout:
+            self.text_timeout[key] += 1
+            if self.text_timeout[key] > self.CACHE_TIMEOUT:
+                texts_to_delete.append(key)
+
+        # If a timing variable is larger than the timeout length, delete it
+        for key in fonts_to_delete:
+            del self.font_cache[key]
+            del self.font_timeout[key]
+        for key in texts_to_delete:
+            del self.text_cache[key]
+            del self.text_timeout[key]
 
     def render_text(self, text, pos, size=14, color=(255, 255, 255)):
         """
@@ -181,6 +220,11 @@ class Game():
         text_id = text + "&sz=" + str(size) + "&colo=" + str(color)
         if text_id not in self.text_cache:
             self.text_cache[text_id] = self.font_cache[size].render(text, False, color)
+
+        # Reset the timeout for these variables since we've just used them
+        if self.enable_cache_timeout:
+            self.font_timeout[size] = 0
+            self.text_timeout[text_id] = 0
 
         draw_x = 0
         draw_y = 0
