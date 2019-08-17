@@ -88,8 +88,6 @@ class Level():
         """
 
         # Initialize the player
-        # Okay I heckin got it -- the player speed needs to be in a direction not max vel
-        # for both X and Y
         self.player = Entity()
         self.player.MAX_ACC = 1
         self.player.DEC_SPEED = 0.2

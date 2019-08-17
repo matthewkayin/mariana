@@ -176,7 +176,8 @@ class Game():
         """
         Proxy update function that handles just the level class logic
         """
-        for event in self.input_queue:
+        while len(self.input_queue) != 0:
+            event = self.input_queue.pop()
             state_info = None
             if event.startswith("AxisMoved"):
                 input_name = event[(event.index(":") + 1):]
