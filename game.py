@@ -1,10 +1,11 @@
 # Mariana
-# Code - Matt Madden and Zubair Khan
-# game.py -- Main Class
+# Code - Matt Madden
+# game.py -- Main class and game loop held here
 
 import sys
 import os
 import pygame
+import level
 
 
 class Game():
@@ -23,7 +24,7 @@ class Game():
         self.init_input()
         self.init_fonts()
 
-        self.gamestate = 0
+        self.start_game()
         self.running = True  # When this becomes false, main loop inside run() will quit
 
         self.run()
@@ -103,7 +104,10 @@ class Game():
         Update game logic
         """
 
-        self.tick_cache_timeout()
+        if self.gamestate == 0:
+            self.update_game(delta)
+
+        self.tick_cache_timeout(delta)
 
     def render(self):
         """
@@ -113,6 +117,8 @@ class Game():
 
         if self.gamestate == -1:
             self.render_joyconfig()
+        elif self.gamestate == 0:
+            self.render_game()
 
         if self.show_fps:
             self.render_text("FPS: " + str(self.fps), (0, 0), 14, self.GREEN)
@@ -155,8 +161,37 @@ class Game():
         pygame.quit()
 
     """
+    GAME OBJECTS AND LOGIC
+    """
+
+    def start_game(self):
+        """
+        Initialize game objects, usually from other classes
+        """
+        self.gamestate = 0
+
+        self.level = level.Level()
+
+    def update_game(self, delta):
+        """
+        Proxy update function that handles just the level class logic
+        """
+        for event in self.input_queue:
+            state_info = None
+            if event.startswith("AxisMoved"):
+                input_name = event[(event.index(":") + 1):]
+                if input_name.startswith("Axis Player"):
+                    state_info = [self.input_states["Axis Player Horiz"], self.input_states["Axis Player Vert"]]
+                else:
+                    state_info = self.input_states[input_name]
+            self.level.handle_event(event, state_info)
+        self.level.update(delta)
+
+    def render_game(self):
+        pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
+
+    """
     FONT AND RENDERING
-    # TODO add a bit that clears cache items after a certain amount of unuse such as 5 minutes
     """
 
     def init_fonts(self):
@@ -175,7 +210,7 @@ class Game():
         self.font_timeout = {}
         self.text_timeout = {}
 
-    def tick_cache_timeout(self):
+    def tick_cache_timeout(self, delta):
         """
         This function updates cache timing variables and deletes them if they haven't been used in too long
         Does not run if enable cache timeout is not set to true
@@ -189,11 +224,11 @@ class Game():
 
         # Update the timing variables
         for key in self.font_timeout:
-            self.font_timeout[key] += 1
+            self.font_timeout[key] += delta
             if self.font_timeout[key] > self.CACHE_TIMEOUT:
                 fonts_to_delete.append(key)
         for key in self.text_timeout:
-            self.text_timeout[key] += 1
+            self.text_timeout[key] += delta
             if self.text_timeout[key] > self.CACHE_TIMEOUT:
                 texts_to_delete.append(key)
 
@@ -350,7 +385,7 @@ class Game():
                     axis_pos = 0
                 if input_name in self.input_map.keys():
                     name = self.input_map[input_name]
-                    self.input_queue.append("AxisMoved:" + input_name)
+                    self.input_queue.append("AxisMoved:" + name)
                     self.input_states[name] = axis_pos
                 input_pos = input_name + "+"
                 if input_pos in self.input_map.keys():
