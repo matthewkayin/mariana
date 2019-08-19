@@ -105,7 +105,7 @@ class Game():
         """
 
         if self.gamestate == 0:
-            self.update_game(delta)
+            self.level.update(delta, self.input_queue, self.input_states)
 
         self.tick_cache_timeout(delta)
 
@@ -169,24 +169,7 @@ class Game():
         Initialize game objects, usually from other classes
         """
         self.gamestate = 0
-
         self.level = level.Level()
-
-    def update_game(self, delta):
-        """
-        Proxy update function that handles just the level class logic
-        """
-        while len(self.input_queue) != 0:
-            event = self.input_queue.pop()
-            state_info = None
-            if event.startswith("AxisMoved"):
-                input_name = event[(event.index(":") + 1):]
-                if input_name.startswith("Axis Player"):
-                    state_info = [self.input_states["Axis Player Horiz"], self.input_states["Axis Player Vert"]]
-                else:
-                    state_info = self.input_states[input_name]
-            self.level.handle_event(event, state_info)
-        self.level.update(delta)
 
     def render_game(self):
         pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
@@ -289,7 +272,7 @@ class Game():
         """
 
         # Define game inputs
-        self.input_names = ["Axis Player Horiz", "Axis Player Vert", "Fish Dash"]
+        self.input_names = ["Axis Player Horiz", "Axis Player Vert", "Fish Dash", "Fish Sprint"]
 
         # Refill the input_names array, adding values for axis-as-button
         placeholder = self.input_names
@@ -310,6 +293,7 @@ class Game():
         self.key_map[pygame.K_w] = "Player Vert Neg"
         self.key_map[pygame.K_s] = "Player Vert Pos"
         self.key_map[pygame.K_SPACE] = "Fish Dash"
+        self.key_map[pygame.K_LSHIFT] = "Fish Sprint"
 
         # Initialize joysticks
         self.joystick_labels = "ABCDEFGHIJ"
