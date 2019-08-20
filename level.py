@@ -28,76 +28,76 @@ class Entity():
         Update the entity position once per frame based on speed / acceleration
         """
 
-        self.check_acceleration()
-        self.update_velocity(delta)
-        self.handle_decceleration(delta)
-        self.check_velocity()
-        self.update_position(delta)
+        self.check_acceleration(self.MAX_ACC)
+        self.update_velocity(self.ax, self.ay, delta)
+        self.handle_decceleration(self.DEC_SPEED, delta)
+        self.check_velocity(self.MAX_VEL)
+        self.update_position(self.dx, self.dy, delta)
 
-    def check_acceleration(self):
+    def check_acceleration(self, max_accel):
         """
         Checks to make sure acceleration hasn't exceeded max acceleration
         """
 
-        if self.ax > self.MAX_ACC:
-            self.ax = self.MAX_ACC
-        elif self.ax < -self.MAX_ACC:
-            self.ax = -self.MAX_ACC
-        if self.ay > self.MAX_ACC:
-            self.ay = self.MAX_ACC
-        elif self.ay < -self.MAX_ACC:
-            self.ay = -self.MAX_ACC
+        if self.ax > max_accel:
+            self.ax = max_accel
+        elif self.ax < -max_accel:
+            self.ax = -max_accel
+        if self.ay > max_accel:
+            self.ay = max_accel
+        elif self.ay < -max_accel:
+            self.ay = -max_accel
 
-    def update_velocity(self, delta):
+    def update_velocity(self, x_accel, y_accel, delta):
         """
-        Update velocity based on acceleration
+        Update velocity based on x and y acceleration
         """
 
-        self.dx += self.ax * delta
-        self.dy += self.ay * delta
+        self.dx += x_accel * delta
+        self.dy += y_accel * delta
 
-    def handle_decceleration(self, delta):
+    def handle_decceleration(self, deccel_speed, delta):
         """
         If decceleration is enabled, ensure it's applied in the direction of movement
         """
 
-        if self.DEC_SPEED != 0:
+        if deccel_speed != 0:
             if self.dx > 0:
-                self.dx -= (self.DEC_SPEED / self.get_speed()) * self.dx * delta
+                self.dx -= (deccel_speed / self.get_speed()) * self.dx * delta
                 # This is so that decceleration stops the entity eventually rather than
                 # bouncing between decceleration in two directions endlessly
                 if self.ax == 0 and self.dx < 0:
                     self.dx = 0
             elif self.dx < 0:
-                self.dx -= (self.DEC_SPEED / self.get_speed()) * self.dx * delta
+                self.dx -= (deccel_speed / self.get_speed()) * self.dx * delta
                 if self.ax == 0 and self.dx > 0:
                     self.dx = 0
             if self.dy > 0:
-                self.dy -= (self.DEC_SPEED / self.get_speed()) * self.dy * delta
+                self.dy -= (deccel_speed / self.get_speed()) * self.dy * delta
                 if self.ay == 0 and self.dy < 0:
                     self.dy = 0
             elif self.dy < 0:
-                self.dy -= (self.DEC_SPEED / self.get_speed()) * self.dy * delta
+                self.dy -= (deccel_speed / self.get_speed()) * self.dy * delta
                 if self.ay == 0 and self.dy > 0:
                     self.dy = 0
 
-    def check_velocity(self):
+    def check_velocity(self, max_vel):
         """
         Check to make sure the velocity hasn't exceeded max velocity
         """
 
-        if self.get_speed() > self.MAX_VEL:
-            scale = self.MAX_VEL / self.get_speed()
+        if self.get_speed() > max_vel:
+            scale = max_vel / self.get_speed()
             self.dx = scale * self.dx
             self.dy = scale * self.dy
 
-    def update_position(self, delta):
+    def update_position(self, x_vel, y_vel, delta):
         """
         Update the position based on velocity
         """
 
-        self.x += self.dx * delta
-        self.y += self.dy * delta
+        self.x += x_vel * delta
+        self.y += y_vel * delta
 
     def get_speed(self):
         return math.sqrt(self.dx ** 2 + self.dy ** 2)
@@ -122,6 +122,8 @@ class Player(Entity):
         # Dash variables
         self.DASH_SPEED = 9
         self.DASH_TIME = 20
+        self.DASH_DEC_MOD = 3
+        self.can_dash = True
         self.is_dashing = False
         self.dash_timer = 0
 
@@ -139,26 +141,37 @@ class Player(Entity):
             self.dash_timer -= delta
         if self.dash_timer > 0:
             # If the dash timer is still going, perform the modified dash update
-            self.check_acceleration()
-            self.check_velocity()
-            self.update_position(delta)
+            self.check_acceleration(self.MAX_ACC)
+            self.check_velocity(self.MAX_VEL)
+            self.update_position(self.dx, self.dy, delta)
         else:
             super().update(delta)
 
-    def update_velocity(self, delta):
+    def update_velocity(self, x_accel, y_accel, delta):
         """
         Override of the update velocity from Entity class,
         this is to increase velocity based on spring acceleration if needed
         """
 
         if self.is_sprinting:
-            self.dx += self.ax * delta * self.SPRINT_ACC_MOD
-            self.dy += self.ay * delta * self.SPRINT_ACC_MOD
+            super().update_velocity(x_accel * self.SPRINT_ACC_MOD, y_accel * self.SPRINT_ACC_MOD, delta)
         else:
-            self.dx += self.ax * delta
-            self.dy += self.ay * delta
+            super().update_velocity(x_accel, y_accel, delta)
 
-    def check_velocity(self):
+    def handle_decceleration(self, deccel_speed, delta):
+        """
+        Override of update velocity that enables faster decceleration from higher speed
+        states like dashing or sprinting
+        """
+
+        if self.is_dashing and self.dash_timer <= 0:
+            self.dash_timer -= delta
+            extra_deccel = (-1 * self.dash_timer) / 10
+            super().handle_decceleration(deccel_speed * self.DASH_DEC_MOD * extra_deccel, delta)
+        else:
+            super().handle_decceleration(deccel_speed, delta)
+
+    def check_velocity(self, max_vel):
         """
         An override of check velocity because if the player is dashing or sprinting,
         they need to be able to go above their normal max velocity
@@ -166,30 +179,26 @@ class Player(Entity):
 
         if self.is_dashing:
             if self.get_speed() > self.DASH_SPEED:
-                # Should use the same code as regular velocity cap
-                scale = self.DASH_SPEED / self.get_speed()
-                self.dx = scale * self.dx
-                self.dy = scale * self.dy
-            elif self.get_speed() <= self.MAX_VEL:
-                # If our speed is at max velocity, we no longer have to use special rules
-                # for velocity capping, so we can turn dashing off and use the regular check
-                # velocity code
+                super().check_velocity(max_vel)
+            elif self.get_speed() <= max_vel:
+                # If we are dashing but our speed has gone into the max vel range, that means
+                # we can return the player to regular movement
                 self.is_dashing = False
-                super().check_velocity()
+                super().check_velocity(max_vel)
         elif self.is_sprinting:
-            if self.get_speed() > self.SPRINT_SPEED:
-                # Should use the same code as regular velocity cap
-                scale = self.SPRINT_SPEED / self.get_speed()
-                self.dx = scale * self.dx
-                self.dy = scale * self.dy
+            super().check_velocity(self.SPRINT_SPEED)
         else:
-            super().check_velocity()
+            super().check_velocity(max_vel)
 
     def dash(self):
         """
         This function causes the player to dash in a direction equal to
         their current acceleration (joystick direction)
         """
+
+        # This is so that the player must repress the dash button in order to dash twice
+        if not self.can_dash:
+            return
 
         # Don't run this funciton if there is no axis input
         if self.ax == 0 and self.ay == 0:
@@ -215,6 +224,7 @@ class Level():
     def update(self, delta, input_queue, input_states):
         used_player_move_axis = False
         player_dash = False
+        player_reset_dash = False
         player_sprint = self.player.is_sprinting
 
         # Read the input queue
@@ -224,6 +234,8 @@ class Level():
                 used_player_move_axis = True
             elif event == "ButtonDown:Fish Dash":
                 player_dash = True
+            elif event == "ButtonUp:Fish Dash":
+                player_reset_dash = True
             elif event == "ButtonDown:Fish Sprint":
                 player_sprint = True
             elif event == "ButtonUp:Fish Sprint":
@@ -249,8 +261,11 @@ class Level():
         if player_dash:
             self.player.dash()
 
+        # If the player released the dash button, enable the dash action
+        if player_reset_dash:
+            self.player.can_dash = True
+
         # Update if the player is sprinting as necessary
         self.player.is_sprinting = player_sprint
 
         self.player.update(delta)
-        print(self.player.get_speed())
