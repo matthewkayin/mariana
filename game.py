@@ -72,11 +72,17 @@ class Game():
 
         # Actually init pygame
         pygame.init()
-        pygame_flags = pygame.HWSURFACE  # we need to experiment to see if this or any other flags are any good
+        pygame_flags = None  # we need to experiment to see if this or any other flags are any good
         if self.debug:
-            self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame_flags)
+            if pygame_flags is None:
+                self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+            else:
+                self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame_flags)
         else:
-            self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame_flags | pygame.FULLSCREEN)
+            if pygame_flags is None:
+                self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.FULLSCREEN)
+            else:
+                self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame_flags | pygame.FULLSCREEN)
         self.clock = pygame.time.Clock()
 
         # If in debug mode, show fps and other info in top left corner
@@ -276,7 +282,7 @@ class Game():
         """
 
         # If the image object for the passed string isn't in the cache, add it to the cache
-        if name not in self.font_cache:
+        if name not in self.image_cache:
             self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
 
         # Reset the timeout for these variables since we've just used them
