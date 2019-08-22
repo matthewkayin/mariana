@@ -22,7 +22,7 @@ class Game():
         self.handle_sysargs()
         self.init_engine()
         self.init_input()
-        self.init_fonts()
+        self.init_caches()
 
         self.start_game()
         self.running = True  # When this becomes false, main loop inside run() will quit
@@ -172,27 +172,29 @@ class Game():
         self.level = level.Level()
 
     def render_game(self):
-        pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
+        # pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
+        self.render_image("fish_0", self.level.player.as_rect())
 
     """
     FONT AND RENDERING
     """
 
-    def init_fonts(self):
+    def init_caches(self):
         """
-        Init fonts and renderable text objects
-        Kind of a smol function because we're using an object cache now
+        Init caches for images, fonts, and renderable text objects
         """
 
         # This cache idea was really clever I had no idea python had these collections
         # I mean keyed arrays as a language feature? That's stupid useful 10/10 well done
         self.font_cache = {}
         self.text_cache = {}
+        self.image_cache = {}
 
         # Timeouts for caches so we don't hold on to variables we won't use
         self.CACHE_TIMEOUT = 3 * 60 * 60
         self.font_timeout = {}
         self.text_timeout = {}
+        self.image_timeout = {}
 
     def tick_cache_timeout(self, delta):
         """
@@ -205,6 +207,7 @@ class Game():
 
         fonts_to_delete = []
         texts_to_delete = []
+        images_to_delete = []
 
         # Update the timing variables
         for key in self.font_timeout:
@@ -215,6 +218,10 @@ class Game():
             self.text_timeout[key] += delta
             if self.text_timeout[key] > self.CACHE_TIMEOUT:
                 texts_to_delete.append(key)
+        for key in self.image_timeout:
+            self.image_timeout[key] += delta
+            if self.image_timeout[key] > self.CACHE_TIMEOUT:
+                images_to_delete.append(key)
 
         # If a timing variable is larger than the timeout length, delete it
         for key in fonts_to_delete:
@@ -223,13 +230,15 @@ class Game():
         for key in texts_to_delete:
             del self.text_cache[key]
             del self.text_timeout[key]
+        for key in images_to_delete:
+            del self.image_cache[key]
+            del self.image_timeout[key]
 
     def render_text(self, text, pos, size=14, color=(255, 255, 255)):
         """
         Renders a text to the screen
-        This function abuses the dynamic typing of python so that x and y can be position values
-        or they can be "CENTERED" (i.e. not an integer), that way I can center an image without
-        having to do the math on each render text call
+        pos parameter is the position to render at
+        If pos[0] or pos[1] == "CENTERED" than the text will be centered horizontally or vertically
         """
 
         # If the font / text object for the passed string isn't in the cache, add it to the cache
@@ -258,6 +267,35 @@ class Game():
             draw_y = pos[1]
 
         self.screen.blit(self.text_cache[text_id], (draw_x, draw_y))
+
+    def render_image(self, name, pos):
+        """
+        Renders an image to the screen
+        pos parameter is the position to render at
+        If pos[0] or pos[1] == "CENTERED" than image will be centered horizontally or vertically
+        """
+
+        # If the image object for the passed string isn't in the cache, add it to the cache
+        if name not in self.font_cache:
+            self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
+
+        # Reset the timeout for these variables since we've just used them
+        if self.enable_cache_timeout:
+            self.image_timeout[name] = 0
+
+        draw_x = 0
+        draw_y = 0
+
+        if pos[0] == "CENTERED":
+            draw_x = (self.SCREEN_WIDTH / 2) - (self.image_cache[name].get_rect().w / 2)
+        else:
+            draw_x = pos[0]
+        if pos[1] == "CENTERED":
+            draw_y = (self.SCREEN_HEIGHT / 2) - (self.image_cache[name].get_rect().h / 2)
+        else:
+            draw_y = pos[1]
+
+        self.screen.blit(self.image_cache[name], (draw_x, draw_y))
 
     """
     GENERAL INPUT HANDLING
