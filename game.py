@@ -59,6 +59,7 @@ class Game():
         # Basic game constants
         self.SCREEN_WIDTH = 1280
         self.SCREEN_HEIGHT = 720
+        self.SCREEN_RECT = pygame.Rect(0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
         self.TITLE = "mariana"
         self.TARGET_FPS = 60
 
@@ -179,7 +180,12 @@ class Game():
 
     def render_game(self):
         # pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
-        self.render_image("fish_0", self.level.player.as_rect())
+        for x in range(0, self.level.map.WIDTH_IN_TILES):
+            for y in range(0, self.level.map.HEIGHT_IN_TILES):
+                draw_rect = self.level.get_tile_rect(x, y)
+                if draw_rect.colliderect(self.SCREEN_RECT):
+                    self.render_image(self.level.map.get_tile(x, y), draw_rect)
+        self.render_image("fish_0", self.level.get_rect(self.level.player))
 
     """
     FONT AND RENDERING
@@ -283,7 +289,10 @@ class Game():
 
         # If the image object for the passed string isn't in the cache, add it to the cache
         if name not in self.image_cache:
-            self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
+            if name == "tile":
+                self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png").convert()
+            else:
+                self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
 
         # Reset the timeout for these variables since we've just used them
         if self.enable_cache_timeout:
