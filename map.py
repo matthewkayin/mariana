@@ -2,6 +2,8 @@
 # Code - Matt Madden
 # map.py -- This has the map class
 
+import os
+
 
 class Map():
     def __init__(self):
@@ -35,11 +37,46 @@ class Map():
             for y in range(0, tile_height):
                 self._tiles[x].append(0)
 
+    def load_mapfile(self, filename):
+        """
+        Takes a tet file and reads the map in from in
+        """
+
+        # First check if file exists
+        if not os.path.isfile(filename):
+            print("Error! Could not find " + filename)
+            return
+
+        # Now read the file
+        map_file = open(filename, "r")
+        map_data = []
+        for line in map_file.read().splitlines():
+            if line.startswith("width="):
+                self.WIDTH_IN_TILES = int(line[(line.index("=") + 1):])
+            elif line.startswith("height="):
+                self.HEIGHT_IN_TILES = int(line[(line.index("=") + 1):])
+            else:
+                map_data.append(line.split(","))
+        map_file.close()
+
+        # Now setup the tiles with the appropriate dimensions
+        self._tiles = []
+        for x in range(0, self.WIDTH_IN_TILES):
+            self._tiles.append([])
+            for y in range(0, self.HEIGHT_IN_TILES):
+                self._tiles[x].append(0)
+
+        # And copy the map data to the tiles values
+        for x in range(0, self.WIDTH_IN_TILES):
+            for y in range(0, self.HEIGHT_IN_TILES):
+                self._tiles[x][y] = int(map_data[y][x]) - 1
+
     def get_tile(self, x, y):
         """
         Return the image name of the tile at the x and y coords
         """
-        return self._tile_map[self._tiles[x][y]]
+        # return self._tile_map[self._tiles[x][y]]
+        return self._tiles[x][y]
 
     def get_width(self):
         return self.WIDTH_IN_TILES * self.TILE_WIDTH

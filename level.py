@@ -17,14 +17,17 @@ class Level():
 
         # Initialize the player
         self.player = entities.Player()
-        self.player.x += 1280
-        self.player.y += 720
+        # self.player.x += 1280
+        # self.player.y += 720
 
         self.map = map.Map()
-        self.map.load_map(-1280, -720, 20 * 3, 12 * 3)
+        self.map.load_mapfile("test.map")
+        # self.map.load_map(-1280, -720, 20 * 3, 12 * 3)
 
-        self.camera_x = 1280
-        self.camera_y = 720
+        # self.camera_x = 1280
+        # self.camera_y = 720
+        self.camera_x = 0
+        self.camera_y = 0
 
     def get_rect(self, entity):
         """
@@ -105,4 +108,3 @@ class Level():
         self.player.is_sprinting = player_sprint
 
         self.player.update(delta)
-

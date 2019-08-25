@@ -184,7 +184,7 @@ class Game():
             for y in range(0, self.level.map.HEIGHT_IN_TILES):
                 draw_rect = self.level.get_tile_rect(x, y)
                 if draw_rect.colliderect(self.SCREEN_RECT):
-                    self.render_image(self.level.map.get_tile(x, y), draw_rect)
+                    self.render_image("tileset:" + str(self.level.map.get_tile(x, y)), draw_rect)
         self.render_image("fish_0", self.level.get_rect(self.level.player))
 
     """
@@ -283,16 +283,28 @@ class Game():
     def render_image(self, name, pos):
         """
         Renders an image to the screen
+        name is a string with the image name (not including file extension or folder location)
+        If name is in the format "<tileset-name>:<index>" then we will render a tile from a tileset
         pos parameter is the position to render at
         If pos[0] or pos[1] == "CENTERED" than image will be centered horizontally or vertically
         """
 
+        if ":" in name:
+            # If tileset not loaded, load each image of the tileset into the cache
+            if name not in self.image_cache:
+                base_name = name[:name.index(":")]
+                tileset = pygame.image.load("res/gfx/" + base_name + ".png").convert()
+                tileset_rect = tileset.get_rect()
+                tileset_width = int(tileset_rect.w / 64)
+                tileset_height = int(tileset_rect.h / 64)
+                for x in range(0, tileset_width):
+                    for y in range(0, tileset_height):
+                        index = x + (y * tileset_width)
+                        self.image_cache[base_name + ":" + str(index)] = tileset.subsurface(pygame.Rect(x * 64, y * 64, 64, 64))
+
         # If the image object for the passed string isn't in the cache, add it to the cache
         if name not in self.image_cache:
-            if name == "tile":
-                self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png").convert()
-            else:
-                self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
+            self.image_cache[name] = pygame.image.load("res/gfx/" + name + ".png")
 
         # Reset the timeout for these variables since we've just used them
         if self.enable_cache_timeout:
