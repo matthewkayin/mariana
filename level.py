@@ -26,6 +26,10 @@ class Level():
 
         # self.camera_x = 1280
         # self.camera_y = 720
+        self.CAMERA_RIGHT = 1280 * 0.75
+        self.CAMERA_LEFT = 1280 * 0.25
+        self.CAMERA_TOP = 720 * 0.25
+        self.CAMERA_BOT = 720 * 0.75
         self.camera_x = 0
         self.camera_y = 0
 
@@ -52,10 +56,15 @@ class Level():
         self.update_player(delta, input_queue, input_states)
 
         # Now update the camera
-        if self.player.x - self.camera_x > (1280 * 0.75) or self.player.x - self.camera_x < (1280 * 0.25):
-            self.camera_x += self.player.dx
-        if self.player.y - self.camera_y > (720 * 0.75) or self.player.y - self.camera_y < (720 * 0.25):
-            self.camera_y += self.player.dy
+        player_rect = self.get_rect(self.player)
+        if player_rect.x > self.CAMERA_RIGHT:
+            self.camera_x += player_rect.x - self.CAMERA_RIGHT
+        elif player_rect.x < self.CAMERA_LEFT:
+            self.camera_x += player_rect.x - self.CAMERA_LEFT
+        if player_rect.y > self.CAMERA_BOT:
+            self.camera_y += player_rect.y - self.CAMERA_BOT
+        elif player_rect.y < self.CAMERA_TOP:
+            self.camera_y += player_rect.y - self.CAMERA_TOP
 
     def update_player(self, delta, input_queue, input_states):
         """
