@@ -21,7 +21,7 @@ class Level():
         # self.player.y += 720
 
         self.map = map.Map()
-        self.map.load_mapfile("test.map")
+        self.map.load_mapfile("frens.map")
         # self.map.load_map(-1280, -720, 20 * 3, 12 * 3)
 
         # self.camera_x = 1280
@@ -65,6 +65,16 @@ class Level():
             self.camera_y += player_rect.y - self.CAMERA_BOT
         elif player_rect.y < self.CAMERA_TOP:
             self.camera_y += player_rect.y - self.CAMERA_TOP
+
+        # Make sure the camera hasn't overstepped its bounds
+        if self.camera_x > self.map.MAX_CAMERA_X:
+            self.camera_x = self.map.MAX_CAMERA_X
+        elif self.camera_x < self.map.MIN_CAMERA_X:
+            self.camera_x = self.map.MIN_CAMERA_X
+        if self.camera_y > self.map.MAX_CAMERA_Y:
+            self.camera_y = self.map.MAX_CAMERA_Y
+        elif self.camera_y < self.map.MIN_CAMERA_Y:
+            self.camera_y = self.map.MIN_CAMERA_Y
 
     def update_player(self, delta, input_queue, input_states):
         """

@@ -23,6 +23,16 @@ class Map():
         self.TILE_WIDTH = 64
         self.TILE_HEIGHT = 64
 
+        self.MAX_CAMERA_X = 0
+        self.MIN_CAMERA_X = 0
+        self.MAX_CAMERA_Y = 0
+        self.MIN_CAMERA_Y = 0
+
+        self.MAX_ENTITY_X = 0
+        self.MIN_ENTITY_X = 0
+        self.MAX_ENTITY_Y = 0
+        self.MIN_ENTITY_Y = 0
+
     def load_map(self, start_x, start_y, tile_width, tile_height):
         """
         This function just loads a blank map of the parameter dimensions
@@ -70,6 +80,16 @@ class Map():
         for x in range(0, self.WIDTH_IN_TILES):
             for y in range(0, self.HEIGHT_IN_TILES):
                 self._tiles[x][y] = int(map_data[y][x]) - 1
+
+        self.MAX_CAMERA_X = self.get_width() - 1280
+        self.MIN_CAMERA_X = 0
+        self.MAX_CAMERA_Y = self.get_height() - 720
+        self.MIN_CAMERA_Y = 0
+
+        self.MAX_ENTITY_X = self.get_width()
+        self.MIN_ENTITY_X = 0
+        self.MAX_ENTITY_Y = self.get_height()
+        self.MIN_ENTITY_Y = 0
 
     def get_tile(self, x, y):
         """
