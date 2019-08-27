@@ -180,12 +180,17 @@ class Game():
 
     def render_game(self):
         # pygame.draw.rect(self.screen, self.RED, self.level.player.as_rect())
+        self.render_map()
+        self.render_image("fish_0", self.level.get_rect(self.level.player))
+
+    def render_map(self):
         for x in range(0, self.level.map.WIDTH_IN_TILES):
             for y in range(0, self.level.map.HEIGHT_IN_TILES):
                 draw_rect = self.level.get_tile_rect(x, y)
                 if draw_rect.colliderect(self.SCREEN_RECT):
-                    self.render_image("tileset:" + str(self.level.map.get_tile(x, y)), draw_rect)
-        self.render_image("fish_0", self.level.get_rect(self.level.player))
+                    self.render_image(self.level.map.tileset + ":" + str(self.level.map.get_tile(x, y)), draw_rect)
+                    if self.level.map.get_wall(x, y) != -1:
+                        self.render_image(self.level.map.alpha_tileset + ":" + str(self.level.map.get_wall(x, y)), draw_rect, True)
 
     """
     FONT AND RENDERING
@@ -280,7 +285,7 @@ class Game():
 
         self.screen.blit(self.text_cache[text_id], (draw_x, draw_y))
 
-    def render_image(self, name, pos):
+    def render_image(self, name, pos, enable_alpha=False):
         """
         Renders an image to the screen
         name is a string with the image name (not including file extension or folder location)
@@ -293,7 +298,10 @@ class Game():
             # If tileset not loaded, load each image of the tileset into the cache
             if name not in self.image_cache:
                 base_name = name[:name.index(":")]
-                tileset = pygame.image.load("res/gfx/" + base_name + ".png").convert()
+                if enable_alpha:
+                    tileset = pygame.image.load("res/gfx/" + base_name + ".png")
+                else:
+                    tileset = pygame.image.load("res/gfx/" + base_name + ".png").convert()
                 tileset_rect = tileset.get_rect()
                 tileset_width = int(tileset_rect.w / 64)
                 tileset_height = int(tileset_rect.h / 64)

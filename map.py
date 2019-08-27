@@ -13,7 +13,7 @@ class Map():
         Then each index i has a corresponding tile name in _tile_map
         """
         self._tiles = []
-        self._tile_map = ["tile"]
+        self._walls = []
 
         self.WIDTH_IN_TILES = 0
         self.HEIGHT_IN_TILES = 0
@@ -33,19 +33,8 @@ class Map():
         self.MAX_ENTITY_Y = 0
         self.MIN_ENTITY_Y = 0
 
-    def load_map(self, start_x, start_y, tile_width, tile_height):
-        """
-        This function just loads a blank map of the parameter dimensions
-        """
-        self.START_X = start_x
-        self.START_Y = start_y
-        self.WIDTH_IN_TILES = tile_width
-        self.HEIGHT_IN_TILES = tile_height
-        self._tiles = []
-        for x in range(0, tile_width):
-            self._tiles.append([])
-            for y in range(0, tile_height):
-                self._tiles[x].append(0)
+        self.tileset = ""
+        self.alpha_tileset = ""
 
     def load_mapfile(self, filename):
         """
@@ -59,27 +48,44 @@ class Map():
 
         # Now read the file
         map_file = open(filename, "r")
-        map_data = []
+        mode = ""
+        floor_data = []
+        wall_data = []
         for line in map_file.read().splitlines():
-            if line.startswith("width="):
+            if line.startswith("tileset="):
+                self.tileset = line[(line.index("=") + 1):]
+            elif line.startswith("alpha-tileset="):
+                self.alpha_tileset = line[(line.index("=") + 1):]
+            elif line.startswith("width="):
                 self.WIDTH_IN_TILES = int(line[(line.index("=") + 1):])
             elif line.startswith("height="):
                 self.HEIGHT_IN_TILES = int(line[(line.index("=") + 1):])
+            elif line.startswith("layer="):
+                mode = line[(line.index("=") + 1):]
             else:
-                map_data.append(line.split(","))
+                if mode == "floor":
+                    floor_data.append(line.split(","))
+                elif mode == "wall":
+                    wall_data.append(line.split(","))
         map_file.close()
+        print(self.alpha_tileset)
+        print(self.tileset)
 
         # Now setup the tiles with the appropriate dimensions
         self._tiles = []
+        self._walls = []
         for x in range(0, self.WIDTH_IN_TILES):
             self._tiles.append([])
+            self._walls.append([])
             for y in range(0, self.HEIGHT_IN_TILES):
                 self._tiles[x].append(0)
+                self._walls[x].append(0)
 
         # And copy the map data to the tiles values
         for x in range(0, self.WIDTH_IN_TILES):
             for y in range(0, self.HEIGHT_IN_TILES):
-                self._tiles[x][y] = int(map_data[y][x]) - 1
+                self._tiles[x][y] = int(floor_data[y][x]) - 1
+                self._walls[x][y] = int(wall_data[y][x]) - 1
 
         self.MAX_CAMERA_X = self.get_width() - 1280
         self.MIN_CAMERA_X = 0
@@ -93,13 +99,28 @@ class Map():
 
     def get_tile(self, x, y):
         """
-        Return the image name of the tile at the x and y coords
+        Return the image id of the tile at the x and y coords
         """
-        # return self._tile_map[self._tiles[x][y]]
+
         return self._tiles[x][y]
 
+    def get_wall(self, x, y):
+        """
+        Return the image id of the tile at the x and y coords on the wall layer
+        Returns -1 if there is no wall there
+        """
+
+        # Note, it returns -1 because of the way data is read in in load_mapfile()
+        return self._walls[x][y]
+
     def get_width(self):
+        """
+        Returns the width in pixels of the map
+        """
         return self.WIDTH_IN_TILES * self.TILE_WIDTH
 
     def get_height(self):
+        """
+        Returns the height in pixels of the map
+        """
         return self.HEIGHT_IN_TILES * self.TILE_HEIGHT
