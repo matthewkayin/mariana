@@ -16,6 +16,8 @@ class Map():
         self._tiles = []
         self._walls = []
 
+        self.player_spawn = [1280 / 2, 720 / 2]
+
         self.WIDTH_IN_TILES = 0
         self.HEIGHT_IN_TILES = 0
         self.START_X = 0
@@ -49,12 +51,20 @@ class Map():
 
         # Now read the file
         map_file = open(filename, "r")
+
         mode = ""
         floor_data = []
         wall_data = []
         special_data = []
+        special_entries = []
+        player_index = -2
+
+        # flags for specific error messaging
+        found_tileset = False
+
         for line in map_file.read().splitlines():
             if line.startswith("tileset="):
+                found_tileset = True
                 self.tileset = line[(line.index("=") + 1):]
             elif line.startswith("alpha-tileset="):
                 self.alpha_tileset = line[(line.index("=") + 1):]
@@ -76,6 +86,8 @@ class Map():
         # Since we have the tilset now is a good time to load in the tileset metadata and to verify that the tileset exists
         if not os.path.isfile("res/gfx/" + self.tileset + ".png"):
             print("Error! Tileset res/gfx/" + self.tileset + ".png not found!")
+            if not found_tileset:
+                print("The map file " + filename + " did not specify any tileset to use!")
             sys.exit(0)
         if not os.path.isfile("res/gfx/" + self.tileset + ".txt"):
             print("Error! Tileset metadata file res/gfx/" + self.tileset + ".txt not found!")
@@ -88,6 +100,8 @@ class Map():
                 self.alphas = list(map(int, alphas_as_string.split(",")))
                 for i in range(0, len(self.alphas)):
                     self.alphas[i] -= 1
+            elif line.startswith("player="):
+                player_index = int(line[(line.index("=") + 1):])
         meta_file.close()
 
         # Now setup the tiles with the appropriate dimensions
@@ -105,6 +119,13 @@ class Map():
             for y in range(0, self.HEIGHT_IN_TILES):
                 self._tiles[x][y] = int(floor_data[y][x]) - 1
                 self._walls[x][y] = int(wall_data[y][x]) - 1
+                if int(special_data[y][x]) != -1:
+                    special_entries.append((x, y, int(special_data[y][x])))
+
+        # Now loop through all the special entries and do any action needed
+        for entry in special_entries:
+            if entry[2] == player_index:
+                self.player_spawn = [entry[0], entry[1]]
 
         self.MAX_CAMERA_X = self.get_width() - 1280
         self.MIN_CAMERA_X = 0

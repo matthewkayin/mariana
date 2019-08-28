@@ -3,6 +3,7 @@
 # entities.py -- Module for game entities
 
 import math
+import pygame
 
 
 class Entity():
@@ -115,8 +116,8 @@ class Player(Entity):
         self.MAX_VEL = 5
         self.x = 700
         self.y = 350
-        self.w = 40
-        self.h = 40
+        self.w = 20
+        self.h = 36
 
         # Dash variables
         self.DASH_SPEED = 9

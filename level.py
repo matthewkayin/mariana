@@ -17,21 +17,47 @@ class Level():
 
         # Initialize the player
         self.player = entities.Player()
-        # self.player.x += 1280
-        # self.player.y += 720
 
+        # Initialize the map
         self.map = map.Map()
-        self.map.load_mapfile("frens.map")
-        # self.map.load_map(-1280, -720, 20 * 3, 12 * 3)
+        self.map.load_mapfile("frens_2.map")
 
-        # self.camera_x = 1280
-        # self.camera_y = 720
+        # Initialize the camera
         self.CAMERA_RIGHT = 1280 * 0.75
         self.CAMERA_LEFT = 1280 * 0.25
         self.CAMERA_TOP = 720 * 0.25
         self.CAMERA_BOT = 720 * 0.75
         self.camera_x = 0
         self.camera_y = 0
+
+        # Set camera position based on player spawn in map
+        self.spawn_player_at_tile(self.map.player_spawn)
+
+    def spawn_player_at_tile(self, pos):
+        """
+        This spawns the player in the center of the tile at the given tile coordinate
+        """
+
+        # Get x and y variables from the pos
+        x = pos[0]
+        y = pos[1]
+
+        # Set the player in teh correct tile
+        self.player.x = x * self.map.TILE_WIDTH
+        self.player.y = y * self.map.TILE_HEIGHT
+
+        # Center the player position within that tile
+        x_diff = self.map.TILE_WIDTH - self.player.w
+        y_diff = self.map.TILE_HEIGHT - self.player.h
+        x_offset = int(x_diff / 2)
+        y_offset = int(y_diff / 2)
+        self.player.x += x_offset
+        self.player.y += y_offset
+
+        # Now set the camera according to player pos
+        # TODO test to make sure that the camera doesn't break at any point by us doing this
+        self.camera_x = self.player.x - (1280 / 2)
+        self.camera_y = self.player.y - (720 / 2)
 
     def get_rect(self, entity):
         """
