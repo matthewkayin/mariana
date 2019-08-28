@@ -3,6 +3,7 @@
 # map.py -- This has the map class
 
 import os
+import sys
 
 
 class Map():
@@ -34,7 +35,7 @@ class Map():
         self.MIN_ENTITY_Y = 0
 
         self.tileset = ""
-        self.alpha_tileset = ""
+        self.alphas = []
 
     def load_mapfile(self, filename):
         """
@@ -44,13 +45,14 @@ class Map():
         # First check if file exists
         if not os.path.isfile(filename):
             print("Error! Could not find " + filename)
-            return
+            sys.exit(0)
 
         # Now read the file
         map_file = open(filename, "r")
         mode = ""
         floor_data = []
         wall_data = []
+        special_data = []
         for line in map_file.read().splitlines():
             if line.startswith("tileset="):
                 self.tileset = line[(line.index("=") + 1):]
@@ -67,9 +69,26 @@ class Map():
                     floor_data.append(line.split(","))
                 elif mode == "wall":
                     wall_data.append(line.split(","))
+                elif mode == "special":
+                    special_data.append(line.split(","))
         map_file.close()
-        print(self.alpha_tileset)
-        print(self.tileset)
+
+        # Since we have the tilset now is a good time to load in the tileset metadata and to verify that the tileset exists
+        if not os.path.isfile("res/gfx/" + self.tileset + ".png"):
+            print("Error! Tileset res/gfx/" + self.tileset + ".png not found!")
+            sys.exit(0)
+        if not os.path.isfile("res/gfx/" + self.tileset + ".txt"):
+            print("Error! Tileset metadata file res/gfx/" + self.tileset + ".txt not found!")
+            sys.exit(0)
+
+        meta_file = open("res/gfx/" + self.tileset + ".txt")
+        for line in meta_file.read().splitlines():
+            if line.startswith("alphas="):
+                alphas_as_string = line[(line.index("=") + 1):]
+                self.alphas = list(map(int, alphas_as_string.split(",")))
+                for i in range(0, len(self.alphas)):
+                    self.alphas[i] -= 1
+        meta_file.close()
 
         # Now setup the tiles with the appropriate dimensions
         self._tiles = []

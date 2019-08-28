@@ -190,7 +190,7 @@ class Game():
                 if draw_rect.colliderect(self.SCREEN_RECT):
                     self.render_image(self.level.map.tileset + ":" + str(self.level.map.get_tile(x, y)), draw_rect)
                     if self.level.map.get_wall(x, y) != -1:
-                        self.render_image(self.level.map.alpha_tileset + ":" + str(self.level.map.get_wall(x, y)), draw_rect, True)
+                        self.render_image(self.level.map.tileset + ":" + str(self.level.map.get_wall(x, y)), draw_rect)
 
     """
     FONT AND RENDERING
@@ -285,7 +285,7 @@ class Game():
 
         self.screen.blit(self.text_cache[text_id], (draw_x, draw_y))
 
-    def render_image(self, name, pos, enable_alpha=False):
+    def render_image(self, name, pos):
         """
         Renders an image to the screen
         name is a string with the image name (not including file extension or folder location)
@@ -298,17 +298,17 @@ class Game():
             # If tileset not loaded, load each image of the tileset into the cache
             if name not in self.image_cache:
                 base_name = name[:name.index(":")]
-                if enable_alpha:
-                    tileset = pygame.image.load("res/gfx/" + base_name + ".png")
-                else:
-                    tileset = pygame.image.load("res/gfx/" + base_name + ".png").convert()
+                tileset = pygame.image.load("res/gfx/" + base_name + ".png")
                 tileset_rect = tileset.get_rect()
                 tileset_width = int(tileset_rect.w / 64)
                 tileset_height = int(tileset_rect.h / 64)
                 for x in range(0, tileset_width):
                     for y in range(0, tileset_height):
                         index = x + (y * tileset_width)
-                        self.image_cache[base_name + ":" + str(index)] = tileset.subsurface(pygame.Rect(x * 64, y * 64, 64, 64))
+                        if index in self.level.map.alphas:
+                            self.image_cache[base_name + ":" + str(index)] = tileset.subsurface(pygame.Rect(x * 64, y * 64, 64, 64))
+                        else:
+                            self.image_cache[base_name + ":" + str(index)] = tileset.subsurface(pygame.Rect(x * 64, y * 64, 64, 64)).convert()
 
         # If the image object for the passed string isn't in the cache, add it to the cache
         if name not in self.image_cache:
