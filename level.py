@@ -20,7 +20,7 @@ class Level():
 
         # Initialize the map
         self.map = map.Map()
-        self.map.load_mapfile("frens_2.map")
+        self.map.load_mapfile("frens.map")
 
         # Initialize the camera
         self.CAMERA_RIGHT = 1280 * 0.75
@@ -73,6 +73,13 @@ class Level():
         """
         return pygame.Rect(self.map.START_X + (x * self.map.TILE_WIDTH) - self.camera_x, self.map.START_Y + (y * self.map.TILE_HEIGHT) - self.camera_y, self.map.TILE_WIDTH, self.map.TILE_HEIGHT)
 
+    def get_collider_rect(self, collider):
+        x = (collider[0] * self.map.TILE_WIDTH) - self.camera_x
+        y = (collider[1] * self.map.TILE_HEIGHT) - self.camera_y
+        w = 64
+        h = 64
+        return pygame.Rect(x, y, w, h)
+
     def update(self, delta, input_queue, input_states):
         """
         Updates the level logic
@@ -80,6 +87,9 @@ class Level():
 
         # First update the player
         self.update_player(delta, input_queue, input_states)
+
+        # Check player collisions
+        self.check_collisions(delta)
 
         # Now update the camera
         player_rect = self.get_rect(self.player)
@@ -101,6 +111,49 @@ class Level():
             self.camera_y = self.map.MAX_CAMERA_Y
         elif self.camera_y < self.map.MIN_CAMERA_Y:
             self.camera_y = self.map.MIN_CAMERA_Y
+
+    def check_collisions(self, delta):
+        """
+        Checks and handles game collisions
+        """
+        player_rect = self.get_rect(self.player)
+        wall_collision_occured = False
+        for collider in self.map.colliders:
+            if player_rect.colliderect(self.get_collider_rect(collider)):
+                # We have a collision, so let's first revert player to pre-collision coords
+                x_step = self.player.dx * delta
+                y_step = self.player.dy * delta
+                self.player.x -= x_step
+                self.player.y -= y_step
+
+                # Now check if collision is caused by x dir or y dir movement
+                self.player.x += x_step  # x dir move check
+                player_rect = self.get_rect(self.player)
+                x_causes_collision = player_rect.colliderect(self.get_collider_rect(collider))
+                self.player.x -= x_step
+
+                self.player.y += y_step  # y dir move check
+                player_rect = self.get_rect(self.player)
+                y_causes_collision = player_rect.colliderect(self.get_collider_rect(collider))
+                self.player.y -= y_step
+
+                # If x movement doesn't cause collision, go ahead and keep doing x movement
+                if not x_causes_collision:
+                    self.player.x += x_step
+                # else:
+                #    self.player.dx = 0
+
+                # Same with y dir movement
+                if not y_causes_collision:
+                    self.player.y += y_step
+                # else:
+                #    self.player.dy = 0
+
+                self.player.handle_collision()
+                wall_collision_occured = True
+                player_rect = self.get_rect(self.player)
+        if not wall_collision_occured:
+            self.player.on_wall = False
 
     def update_player(self, delta, input_queue, input_states):
         """
@@ -126,7 +179,7 @@ class Level():
                 player_sprint = False
 
         # Perform actions based on the input queue
-
+        #
         # Update player acceleration
         if used_player_move_axis:
             axis_pos = [input_states["Axis Player Horiz"], input_states["Axis Player Vert"]]

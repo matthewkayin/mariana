@@ -132,6 +132,8 @@ class Player(Entity):
         self.SPRINT_ACC_MOD = 2
         self.is_sprinting = False
 
+        self.on_wall = False
+
     def update(self, delta):
         """
         Override of the update function from Entity class
@@ -189,6 +191,17 @@ class Player(Entity):
             super().check_velocity(self.SPRINT_SPEED)
         else:
             super().check_velocity(max_vel)
+
+    def handle_collision(self):
+        """
+        Reduces player speed after a collision but allows player to
+        accelerate if they're rubbing up against a wall rather than killing
+        their speed each frame
+        """
+        if not self.on_wall:
+            self.dx = 0
+            self.dy = 0
+            self.on_wall = True
 
     def dash(self):
         """

@@ -15,6 +15,7 @@ class Map():
         """
         self._tiles = []
         self._walls = []
+        self.colliders = []
 
         self.player_spawn = [1280 / 2, 720 / 2]
 
@@ -58,6 +59,7 @@ class Map():
         special_data = []
         special_entries = []
         player_index = -2
+        collider_indeces = []
 
         # flags for specific error messaging
         found_tileset = False
@@ -102,6 +104,9 @@ class Map():
                     self.alphas[i] -= 1
             elif line.startswith("player="):
                 player_index = int(line[(line.index("=") + 1):])
+            elif line.startswith("colliders="):
+                colliders_as_string = line[(line.index("=") + 1):]
+                collider_indeces = list(map(int, colliders_as_string.split(",")))
         meta_file.close()
 
         # Now setup the tiles with the appropriate dimensions
@@ -126,6 +131,8 @@ class Map():
         for entry in special_entries:
             if entry[2] == player_index:
                 self.player_spawn = [entry[0], entry[1]]
+            if entry[2] in collider_indeces:
+                self.colliders.append((entry[0], entry[1]))
 
         self.MAX_CAMERA_X = self.get_width() - 1280
         self.MIN_CAMERA_X = 0
