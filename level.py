@@ -20,7 +20,7 @@ class Level():
 
         # Initialize the map
         self.map = map.Map()
-        self.map.load_mapfile("frens.map")
+        self.map.load_mapfile("data/map/frens.map")
 
         # Initialize the camera
         self.CAMERA_RIGHT = 1280 * 0.75

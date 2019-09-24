@@ -798,7 +798,7 @@ class Game():
         """
         Saves the controller configuration to a file
         """
-        map_file = open("keyconfig.txt", "w")
+        map_file = open("data/keyconfig.txt", "w")
         for i in range(0, len(self.input_names)):
             name = self.input_names[i]
             if name in self.input_map.values():
@@ -810,9 +810,9 @@ class Game():
         """
         Loads the controller configuration from a file
         """
-        if not os.path.isfile("keyconfig.txt"):
+        if not os.path.isfile("data/keyconfig.txt"):
             return
-        map_file = open("keyconfig.txt", "r")
+        map_file = open("data/keyconfig.txt", "r")
         for line in map_file.read().splitlines():
             if "=" not in line:
                 continue
